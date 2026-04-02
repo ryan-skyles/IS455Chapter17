@@ -55,3 +55,6 @@
 /Users/ryanskyles/Desktop/IS455Chapter17/obj/Debug/net10.0/IS455Chapter17.pdb
 /Users/ryanskyles/Desktop/IS455Chapter17/obj/Debug/net10.0/IS455Chapter17.genruntimeconfig.cache
 /Users/ryanskyles/Desktop/IS455Chapter17/obj/Debug/net10.0/ref/IS455Chapter17.dll
+/Users/ryanskyles/Desktop/IS455Chapter17/obj/Debug/net10.0/IS455Chapter17.sourcelink.json
+/Users/ryanskyles/Desktop/IS455Chapter17/bin/Debug/net10.0/artifacts/metrics.json
+/Users/ryanskyles/Desktop/IS455Chapter17/bin/Debug/net10.0/artifacts/model_metadata.json

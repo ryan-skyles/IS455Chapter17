@@ -511,22 +511,34 @@ app.MapGet("/orders/{orderId:int}", (HttpContext ctx, int orderId) =>
 app.MapGet("/warehouse/priority", () =>
 {
     using var connection = OpenConnection(dbPath);
+
+    using var checkCmd = connection.CreateCommand();
+    checkCmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='order_predictions_fraud';";
+    var tableExists = Convert.ToInt32(checkCmd.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
+
+    if (!tableExists)
+    {
+        return Html("Fraud Priority Queue", """
+        <h1>Fraud Priority Queue</h1>
+        <p class="error">No predictions found. Click <strong>Run Scoring</strong> to generate fraud predictions.</p>
+        """);
+    }
+
     using var command = connection.CreateCommand();
     command.CommandText = """
     SELECT
-      o.order_id,
+      op.order_id,
       o.order_datetime,
       o.order_total,
       c.customer_id,
       c.full_name AS customer_name,
-      s.ship_datetime,
-      s.promised_days,
-      s.actual_days,
-      s.late_delivery
-    FROM orders o
+      op.fraud_probability,
+      op.predicted_fraud,
+      op.prediction_timestamp
+    FROM order_predictions_fraud op
+    JOIN orders o ON o.order_id = op.order_id
     JOIN customers c ON c.customer_id = o.customer_id
-    JOIN shipments s ON s.order_id = o.order_id
-    ORDER BY s.late_delivery DESC, (s.actual_days - s.promised_days) DESC, o.order_datetime ASC
+    ORDER BY op.fraud_probability DESC
     LIMIT 50;
     """;
 
@@ -534,10 +546,8 @@ app.MapGet("/warehouse/priority", () =>
     var rows = new StringBuilder();
     while (reader.Read())
     {
-        var late = Convert.ToInt32(reader["late_delivery"], CultureInfo.InvariantCulture) != 0;
-        var promised = Convert.ToInt32(reader["promised_days"], CultureInfo.InvariantCulture);
-        var actual = Convert.ToInt32(reader["actual_days"], CultureInfo.InvariantCulture);
-        var delay = actual - promised;
+        var prob = Convert.ToDouble(reader["fraud_probability"], CultureInfo.InvariantCulture);
+        var predicted = Convert.ToInt32(reader["predicted_fraud"], CultureInfo.InvariantCulture) != 0;
         rows.Append("<tr><td>")
             .Append(WebUtility.HtmlEncode(reader["order_id"]?.ToString() ?? ""))
             .Append("</td><td>")
@@ -548,28 +558,24 @@ app.MapGet("/warehouse/priority", () =>
             .Append(WebUtility.HtmlEncode(reader["customer_id"]?.ToString() ?? ""))
             .Append("</td><td>")
             .Append(WebUtility.HtmlEncode(reader["customer_name"]?.ToString() ?? ""))
+            .Append("</td><td class=\"num\">")
+            .Append(prob.ToString("0.0000", CultureInfo.InvariantCulture))
             .Append("</td><td>")
-            .Append(WebUtility.HtmlEncode(reader["ship_datetime"]?.ToString() ?? ""))
-            .Append("</td><td class=\"num\">")
-            .Append(promised.ToString(CultureInfo.InvariantCulture))
-            .Append("</td><td class=\"num\">")
-            .Append(actual.ToString(CultureInfo.InvariantCulture))
-            .Append("</td><td class=\"num\">")
-            .Append(delay.ToString(CultureInfo.InvariantCulture))
+            .Append(predicted ? "<span class=\"badge warn\">FRAUD</span>" : "<span class=\"badge ok\">OK</span>")
             .Append("</td><td>")
-            .Append(late ? "<span class=\"badge warn\">true</span>" : "<span class=\"badge ok\">false</span>")
+            .Append(WebUtility.HtmlEncode(reader["prediction_timestamp"]?.ToString() ?? ""))
             .AppendLine("</td></tr>");
     }
 
     var body = $$"""
-    <h1>Late Delivery Priority Queue</h1>
-    <p>Top 50 orders prioritized by late-delivery flag and delay days.</p>
+    <h1>Fraud Priority Queue</h1>
+    <p>Top 50 orders ranked by fraud probability (ML-scored).</p>
     <table>
-      <thead><tr><th>Order</th><th>Order Date</th><th class="num">Total</th><th>Customer ID</th><th>Customer</th><th>Shipped</th><th class="num">Promised</th><th class="num">Actual</th><th class="num">Delay</th><th>Late</th></tr></thead>
+      <thead><tr><th>Order</th><th>Order Date</th><th class="num">Total</th><th>Customer ID</th><th>Customer</th><th class="num">Fraud Prob</th><th>Prediction</th><th>Scored At</th></tr></thead>
       <tbody>{{rows}}</tbody>
     </table>
     """;
-    return Html("Late Delivery Priority Queue", body);
+    return Html("Fraud Priority Queue", body);
 });
 
 app.MapPost("/scoring/run", async () =>
@@ -582,7 +588,7 @@ app.MapPost("/scoring/run", async () =>
 
     var psi = new ProcessStartInfo
     {
-        FileName = "python",
+        FileName = "python3",
         Arguments = $"\"{scriptPath}\"",
         WorkingDirectory = app.Environment.ContentRootPath,
         RedirectStandardOutput = true,
