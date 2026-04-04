@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Props = { customerLabel: string | null };
 
 export function Nav({ customerLabel }: Props) {
   return (
-    <header className="bg-slate-900 px-4 py-3 text-sm text-white">
+    <header className="border-b bg-slate-900 px-4 py-3 text-sm text-white">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
-        <span className="text-slate-300">
+        <span className="font-medium text-slate-100">IS455 Shop</span>
+        <span className="ml-auto text-slate-400">
           {customerLabel ?? "No customer selected"}
         </span>
       </div>
@@ -15,27 +18,28 @@ export function Nav({ customerLabel }: Props) {
 }
 
 export function SubNav() {
+  const ghost = cn(buttonVariants({ variant: "ghost", size: "sm" }));
   return (
-    <nav className="mb-4 flex flex-wrap gap-3 border-b border-slate-200 pb-3 text-sm">
-      <Link className="text-slate-700 underline" href="/select-customer">
+    <nav className="mb-6 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">
+      <Link href="/select-customer" className={ghost}>
         Select Customer
       </Link>
-      <Link className="text-slate-700 underline" href="/dashboard">
+      <Link href="/dashboard" className={ghost}>
         Dashboard
       </Link>
-      <Link className="text-slate-700 underline" href="/place-order">
+      <Link href="/place-order" className={ghost}>
         Place Order
       </Link>
-      <Link className="text-slate-700 underline" href="/orders">
+      <Link href="/orders" className={ghost}>
         Orders
       </Link>
-      <Link className="text-slate-700 underline" href="/warehouse/priority">
+      <Link href="/warehouse/priority" className={ghost}>
         Warehouse Priority
       </Link>
-      <form action="/api/scoring/run" method="post" className="inline">
+      <form action="/api/scoring/run" method="post" className="ml-auto">
         <button
           type="submit"
-          className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-800"
+          className={cn(buttonVariants({ variant: "default", size: "sm" }))}
         >
           Run Scoring
         </button>

@@ -1,11 +1,25 @@
 import { tryCreateServiceClient } from "@/lib/supabase/server";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { selectCustomer } from "./actions";
 
-export default async function SelectCustomerPage() {
+export default async function SelectCustomerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const supabase = tryCreateServiceClient();
-  if (!supabase) {
-    return null;
-  }
+  if (!supabase) return null;
+
+  const sp = await searchParams;
 
   const { data: customers, error } = await supabase
     .from("customers")
@@ -23,37 +37,44 @@ export default async function SelectCustomerPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Select Customer</h1>
-      <p className="mt-1 text-slate-600">
-        Choose an existing customer to act as for this session.
-      </p>
-      <form action={selectCustomer} className="mt-6 max-w-lg space-y-4">
-        <div>
-          <label htmlFor="customer_id" className="block text-sm font-medium">
-            Customer
-          </label>
-          <select
-            id="customer_id"
-            name="customer_id"
-            required
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-2"
-          >
-            <option value="">-- Select --</option>
-            {(customers ?? []).map((c) => (
-              <option key={c.customer_id} value={c.customer_id}>
-                {c.full_name} ({c.email}) — {c.city}, {c.state}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="rounded border border-slate-300 bg-white px-4 py-2 text-slate-800"
-        >
-          Continue
-        </button>
-      </form>
+    <div className="mx-auto max-w-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Customer</CardTitle>
+          <CardDescription>
+            Choose an existing customer to act as for this session. No login required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sp.error && (
+            <p className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              {sp.error === "invalid"
+                ? "Please select a valid customer."
+                : "Customer not found."}
+            </p>
+          )}
+          <form action={selectCustomer} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="customer_id">Customer</Label>
+              <Select name="customer_id" required>
+                <SelectTrigger id="customer_id" className="w-full">
+                  <SelectValue placeholder="— Select a customer —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(customers ?? []).map((c) => (
+                    <SelectItem key={c.customer_id} value={String(c.customer_id)}>
+                      {c.full_name} ({c.email}) — {c.city}, {c.state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full">
+              Continue
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

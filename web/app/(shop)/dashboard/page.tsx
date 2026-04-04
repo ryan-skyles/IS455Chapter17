@@ -2,6 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCustomerIdCookie } from "@/lib/cookies";
 import { tryCreateServiceClient } from "@/lib/supabase/server";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default async function DashboardPage() {
   const supabase = tryCreateServiceClient();
@@ -12,7 +21,7 @@ export default async function DashboardPage() {
 
   const { data: customer, error: ce } = await supabase
     .from("customers")
-    .select("customer_id, full_name")
+    .select("customer_id, full_name, email")
     .eq("customer_id", customerId)
     .maybeSingle();
 
@@ -35,48 +44,77 @@ export default async function DashboardPage() {
     .limit(5);
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="mt-2">
-        <strong>Customer:</strong> {customer.full_name} (ID {customer.customer_id})
-      </p>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="text-sm font-medium text-slate-600">Order Count</h3>
-          <p className="text-2xl font-semibold">{orderCount}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="text-sm font-medium text-slate-600">Total Spent</h3>
-          <p className="text-2xl font-semibold">
-            ${totalSpent.toFixed(2)}
-          </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <p className="mt-1 text-slate-500">
+          {customer.full_name} &mdash; {customer.email}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">
+              Total Orders
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{orderCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">
+              Total Spent
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">${totalSpent.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Recent Orders</h2>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(recent ?? []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-slate-400">
+                    No orders yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (recent ?? []).map((o) => (
+                  <TableRow key={o.order_id}>
+                    <TableCell>
+                      <Link
+                        className="font-medium text-blue-700 underline"
+                        href={`/orders/${o.order_id}`}
+                      >
+                        #{o.order_id}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{o.order_datetime}</TableCell>
+                    <TableCell className="text-right">
+                      ${Number(o.order_total).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
-      <h2 className="mt-8 text-lg font-semibold">Recent Orders</h2>
-      <table className="mt-2 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-100 text-left">
-            <th className="p-2">Order</th>
-            <th className="p-2">Date</th>
-            <th className="p-2 text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(recent ?? []).map((o) => (
-            <tr key={o.order_id} className="border-b border-slate-100">
-              <td className="p-2">
-                <Link className="text-blue-700 underline" href={`/orders/${o.order_id}`}>
-                  #{o.order_id}
-                </Link>
-              </td>
-              <td className="p-2">{o.order_datetime}</td>
-              <td className="p-2 text-right">
-                ${Number(o.order_total).toFixed(2)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

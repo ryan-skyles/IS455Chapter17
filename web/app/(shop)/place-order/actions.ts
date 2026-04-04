@@ -107,5 +107,5 @@ export async function createOrder(formData: FormData) {
     redirect("/place-order?error=items");
   }
 
-  redirect(`/orders/${orderId}`);
+  redirect(`/orders?success=1`);
 }

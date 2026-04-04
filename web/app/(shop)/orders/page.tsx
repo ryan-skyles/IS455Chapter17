@@ -2,13 +2,27 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCustomerIdCookie } from "@/lib/cookies";
 import { tryCreateServiceClient } from "@/lib/supabase/server";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string }>;
+}) {
   const supabase = tryCreateServiceClient();
   if (!supabase) return null;
 
   const customerId = await getCustomerIdCookie();
   if (!customerId) redirect("/select-customer");
+
+  const sp = await searchParams;
 
   const { data: customer, error: ce } = await supabase
     .from("customers")
@@ -31,47 +45,69 @@ export default async function OrdersPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Order History</h1>
-      <p className="mt-1">
-        Customer: <strong>{customer.full_name}</strong>
-      </p>
-      <table className="mt-4 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-100 text-left">
-            <th className="p-2">Order</th>
-            <th className="p-2">Date</th>
-            <th className="p-2 text-right">Subtotal</th>
-            <th className="p-2 text-right">Shipping</th>
-            <th className="p-2 text-right">Tax</th>
-            <th className="p-2 text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(rows ?? []).map((r) => (
-            <tr key={r.order_id} className="border-b border-slate-100">
-              <td className="p-2">
-                <Link className="text-blue-700 underline" href={`/orders/${r.order_id}`}>
-                  #{r.order_id}
-                </Link>
-              </td>
-              <td className="p-2">{r.order_datetime}</td>
-              <td className="p-2 text-right">
-                ${Number(r.order_subtotal).toFixed(2)}
-              </td>
-              <td className="p-2 text-right">
-                ${Number(r.shipping_fee).toFixed(2)}
-              </td>
-              <td className="p-2 text-right">
-                ${Number(r.tax_amount).toFixed(2)}
-              </td>
-              <td className="p-2 text-right">
-                ${Number(r.order_total).toFixed(2)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Order History</h1>
+        <p className="mt-1 text-slate-500">
+          Customer: <strong>{customer.full_name}</strong>
+        </p>
+      </div>
+
+      {sp.success && (
+        <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+          Order placed successfully!
+        </div>
+      )}
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Subtotal</TableHead>
+              <TableHead className="text-right">Shipping</TableHead>
+              <TableHead className="text-right">Tax</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(rows ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-slate-400">
+                  No orders yet.
+                </TableCell>
+              </TableRow>
+            ) : (
+              (rows ?? []).map((r) => (
+                <TableRow key={r.order_id}>
+                  <TableCell>
+                    <Link
+                      className="font-medium text-blue-700 underline"
+                      href={`/orders/${r.order_id}`}
+                    >
+                      #{r.order_id}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{r.order_datetime}</TableCell>
+                  <TableCell className="text-right">
+                    ${Number(r.order_subtotal).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    ${Number(r.shipping_fee).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    ${Number(r.tax_amount).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ${Number(r.order_total).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

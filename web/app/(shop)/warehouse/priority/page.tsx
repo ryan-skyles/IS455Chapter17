@@ -1,4 +1,13 @@
 import { tryCreateServiceClient } from "@/lib/supabase/server";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default async function WarehousePriorityPage({
   searchParams,
@@ -35,101 +44,101 @@ export default async function WarehousePriorityPage({
 
   const list = rows ?? [];
 
-  if (list.length === 0) {
-    return (
+  return (
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Fraud Priority Queue</h1>
-        {sp.scored ? (
-          <p className="mt-2 text-green-700">Scoring finished (no rows returned).</p>
-        ) : null}
-        <p className="mt-4 text-red-700">
-          No predictions found. Click <strong>Run Scoring</strong> to generate fraud
-          predictions.
+        <p className="mt-1 text-slate-500">
+          Top 50 orders ranked by fraud probability. Use the{" "}
+          <strong>Run Scoring</strong> button in the nav to refresh predictions.
         </p>
       </div>
-    );
-  }
 
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold">Fraud Priority Queue</h1>
-      {sp.scored ? (
-        <p className="mt-2 text-green-700">Scoring completed.</p>
-      ) : null}
-      <p className="mt-1 text-slate-600">
-        Top 50 orders ranked by fraud probability (refreshed by Run Scoring).
-      </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[800px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-100 text-left">
-              <th className="p-2">Order</th>
-              <th className="p-2">Order Date</th>
-              <th className="p-2 text-right">Total</th>
-              <th className="p-2">Customer ID</th>
-              <th className="p-2">Customer</th>
-              <th className="p-2 text-right">Fraud Prob</th>
-              <th className="p-2">Prediction</th>
-              <th className="p-2">Scored At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((r) => {
-              const o = r.orders;
-              const row = Array.isArray(o) ? o[0] : o;
-              const order =
-                row && typeof row === "object" && "order_datetime" in row
-                  ? (row as unknown as {
-                      order_datetime: string;
-                      order_total: number;
-                      customer_id: number;
-                      customers:
-                        | { full_name: string }
-                        | { full_name: string }[]
-                        | null;
-                    })
-                  : null;
-              const cust = order?.customers;
-              const cname = Array.isArray(cust)
-                ? cust[0]?.full_name ?? ""
-                : cust && typeof cust === "object" && "full_name" in cust
-                  ? cust.full_name
-                  : "";
-              const predicted = Number(r.predicted_fraud) !== 0;
-              return (
-                <tr key={r.order_id} className="border-b border-slate-100">
-                  <td className="p-2">{r.order_id}</td>
-                  <td className="p-2">{order?.order_datetime ?? ""}</td>
-                  <td className="p-2 text-right">
-                    ${order ? Number(order.order_total).toFixed(2) : ""}
-                  </td>
-                  <td className="p-2">{order?.customer_id ?? ""}</td>
-                  <td className="p-2">{cname}</td>
-                  <td className="p-2 text-right">
-                    {Number(r.fraud_probability).toFixed(4)}
-                  </td>
-                  <td className="p-2">
-                    {predicted ? (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">
-                        FRAUD
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">
-                        OK
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-2 text-xs">
-                    {r.prediction_timestamp
-                      ? new Date(r.prediction_timestamp).toISOString()
-                      : ""}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {sp.scored && (
+        <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+          Scoring completed — predictions have been refreshed.
+        </div>
+      )}
+
+      {list.length === 0 ? (
+        <div className="rounded-md border border-dashed px-6 py-10 text-center text-slate-500">
+          <p className="font-medium">No predictions yet.</p>
+          <p className="mt-1 text-sm">
+            Click <strong>Run Scoring</strong> in the navigation bar to generate fraud
+            predictions.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Order Date</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead className="text-right">Fraud Prob</TableHead>
+                <TableHead>Prediction</TableHead>
+                <TableHead>Scored At</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {list.map((r) => {
+                const o = r.orders;
+                const row = Array.isArray(o) ? o[0] : o;
+                const order =
+                  row && typeof row === "object" && "order_datetime" in row
+                    ? (row as unknown as {
+                        order_datetime: string;
+                        order_total: number;
+                        customer_id: number;
+                        customers:
+                          | { full_name: string }
+                          | { full_name: string }[]
+                          | null;
+                      })
+                    : null;
+                const cust = order?.customers;
+                const cname = Array.isArray(cust)
+                  ? cust[0]?.full_name ?? ""
+                  : cust && typeof cust === "object" && "full_name" in cust
+                    ? cust.full_name
+                    : "";
+                const predicted = Number(r.predicted_fraud) !== 0;
+                const prob = Number(r.fraud_probability);
+
+                return (
+                  <TableRow key={r.order_id}>
+                    <TableCell className="font-medium">#{r.order_id}</TableCell>
+                    <TableCell className="text-slate-500">
+                      {order?.order_datetime ?? ""}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {order ? `$${Number(order.order_total).toFixed(2)}` : ""}
+                    </TableCell>
+                    <TableCell>{cname}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {(prob * 100).toFixed(1)}%
+                    </TableCell>
+                    <TableCell>
+                      {predicted ? (
+                        <Badge variant="destructive">FRAUD</Badge>
+                      ) : (
+                        <Badge variant="secondary">OK</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-400">
+                      {r.prediction_timestamp
+                        ? new Date(r.prediction_timestamp).toLocaleString()
+                        : ""}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,17 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { getCustomerIdCookie } from "@/lib/cookies";
 import { tryCreateServiceClient } from "@/lib/supabase/server";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ orderId: string }> };
 
@@ -34,18 +45,18 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (oe || !order) {
     return (
-      <div>
+      <div className="space-y-4">
         <h1 className="text-2xl font-semibold">Order Detail</h1>
-        <p className="mt-2 text-red-600">Order not found.</p>
+        <p className="text-red-600">Order not found.</p>
       </div>
     );
   }
 
   if (order.customer_id !== customerId) {
     return (
-      <div>
+      <div className="space-y-4">
         <h1 className="text-2xl font-semibold">Order Detail</h1>
-        <p className="mt-2 text-red-600">
+        <p className="text-red-600">
           You can only view your selected customer&apos;s orders.
         </p>
       </div>
@@ -68,56 +79,79 @@ export default async function OrderDetailPage({ params }: Props) {
     .order("order_item_id", { ascending: true });
 
   return (
-    <div>
-      <p className="mb-4">
-        <Link className="text-blue-700 underline" href="/orders">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/orders"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
           ← Back to orders
         </Link>
-      </p>
+      </div>
+
       <h1 className="text-2xl font-semibold">Order #{orderId}</h1>
-      <p className="mt-2">Date: {order.order_datetime}</p>
-      <p className="mt-2 text-sm text-slate-700">
-        Subtotal:{" "}
-        <strong>${Number(order.order_subtotal).toFixed(2)}</strong>, Shipping:{" "}
-        <strong>${Number(order.shipping_fee).toFixed(2)}</strong>, Tax:{" "}
-        <strong>${Number(order.tax_amount).toFixed(2)}</strong>, Total:{" "}
-        <strong>${Number(order.order_total).toFixed(2)}</strong>
-      </p>
-      <h2 className="mt-8 text-lg font-semibold">Line Items</h2>
-      <table className="mt-2 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-100 text-left">
-            <th className="p-2">Product ID</th>
-            <th className="p-2">Name</th>
-            <th className="p-2 text-right">Qty</th>
-            <th className="p-2 text-right">Unit Price</th>
-            <th className="p-2 text-right">Line Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(items ?? []).map((row) => {
-            const pname =
-              row.products &&
-              typeof row.products === "object" &&
-              "product_name" in row.products
-                ? (row.products as { product_name: string }).product_name
-                : "";
-            return (
-              <tr key={row.order_item_id} className="border-b border-slate-100">
-                <td className="p-2">{row.product_id}</td>
-                <td className="p-2">{pname}</td>
-                <td className="p-2 text-right">{row.quantity}</td>
-                <td className="p-2 text-right">
-                  ${Number(row.unit_price).toFixed(2)}
-                </td>
-                <td className="p-2 text-right">
-                  ${Number(row.line_total).toFixed(2)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        {[
+          { label: "Date", value: order.order_datetime },
+          { label: "Subtotal", value: `$${Number(order.order_subtotal).toFixed(2)}` },
+          { label: "Shipping", value: `$${Number(order.shipping_fee).toFixed(2)}` },
+          { label: "Tax", value: `$${Number(order.tax_amount).toFixed(2)}` },
+        ].map((s) => (
+          <Card key={s.label}>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs font-medium text-slate-500">
+                {s.label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm font-semibold">{s.value}</CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Line Items</h2>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Line Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(items ?? []).map((row) => {
+                const pname =
+                  row.products &&
+                  typeof row.products === "object" &&
+                  "product_name" in row.products
+                    ? (row.products as { product_name: string }).product_name
+                    : "";
+                return (
+                  <TableRow key={row.order_item_id}>
+                    <TableCell className="text-slate-500">{row.product_id}</TableCell>
+                    <TableCell>{pname}</TableCell>
+                    <TableCell className="text-right">{row.quantity}</TableCell>
+                    <TableCell className="text-right">
+                      ${Number(row.unit_price).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${Number(row.line_total).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <p className="mt-2 text-right text-sm font-semibold">
+          Order Total:{" "}
+          <span className="text-base">${Number(order.order_total).toFixed(2)}</span>
+        </p>
+      </div>
     </div>
   );
 }
